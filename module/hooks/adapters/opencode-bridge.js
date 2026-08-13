@@ -33,8 +33,7 @@ function denialReason(dispatcherOutput) {
 }
 
 export const TackroomGuards = async ({ directory } = {}) => {
-  const workingDirectory =
-    typeof directory === "string" && directory ? directory : process.cwd();
+  const workingDirectory = typeof directory === "string" && directory ? directory : process.cwd();
   return {
     "tool.execute.before": async (input, output) => {
       const dispatcherOutput = await runDispatcher({

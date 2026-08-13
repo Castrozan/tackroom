@@ -64,13 +64,13 @@ harness is a build step with checks that fail when the three surfaces stop match
 
 ## Where each thing lands
 
-| You declare          | Claude Code           | Codex                | OpenCode                            |
-| -------------------- | --------------------- | -------------------- | ----------------------------------- |
-| `instructions`       | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.config/opencode/AGENTS.md`      |
-| `skillsDirectory`    | `~/.claude/skills/`   | `~/.codex/skills/`   | `~/.config/opencode/skills/`        |
-| `subagentsDirectory` | `~/.claude/agents/`   | not supported        | `~/.config/opencode/agent/`         |
+| You declare          | Claude Code           | Codex                  | OpenCode                           |
+| -------------------- | --------------------- | ---------------------- | ---------------------------------- |
+| `instructions`       | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md`   | `~/.config/opencode/AGENTS.md`     |
+| `skillsDirectory`    | `~/.claude/skills/`   | `~/.codex/skills/`     | `~/.config/opencode/skills/`       |
+| `subagentsDirectory` | `~/.claude/agents/`   | not supported          | `~/.config/opencode/agent/`        |
 | `mcpServers`         | `~/.claude.json`      | `~/.codex/config.toml` | `~/.config/opencode/opencode.json` |
-| `guardrails`         | `settings.json` hooks | `config.toml` hooks  | `plugin/tackroom-guards.js`         |
+| `guardrails`         | `settings.json` hooks | `config.toml` hooks    | `plugin/tackroom-guards.js`        |
 
 The instruction body arrives byte-identical on all three, and a flake check fails the build if
 it ever does not. Subagent frontmatter is rewritten into OpenCode's permission-map schema on the

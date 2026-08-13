@@ -21,7 +21,17 @@
       ...
     }:
     let
-      identity = import ./identity.nix;
+      declaredIdentity =
+        if builtins.pathExists ./identity.nix then
+          import ./identity.nix
+        else
+          throw "identity.nix is missing. Create it with your username, homeDirectory and system, and make sure git is tracking it, because a flake only reads tracked files.";
+
+      identity =
+        if nixpkgs.lib.hasPrefix "REPLACE-WITH" declaredIdentity.username then
+          throw "Fill in identity.nix with the username, home directory and system of this machine. `npx tackroom init` writes it for you."
+        else
+          declaredIdentity;
 
       unfreeHarnessBinaries = [ "claude-code" ];
 

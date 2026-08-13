@@ -40,9 +40,7 @@ export async function applyConfiguration({ directory, assumeYes }) {
   step("Building and activating your configuration");
   const applied = await nix(nixPath, ["run", ".#apply"], { cwd: configurationDirectory });
   if (applied.code !== 0) {
-    throw new UserFacingError(
-      "Activation failed. The Nix output above names the option or file at fault.",
-    );
+    throw new UserFacingError("Activation failed. The Nix output above names the option or file at fault.");
   }
   ok("Every enabled harness now matches this repository");
 }
