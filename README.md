@@ -129,9 +129,10 @@ npx tackroom update [dir]   Update pinned inputs, then apply
 npx tackroom doctor [dir]   Report what is wired, missing or stale
 ```
 
-`doctor` checks the trap that costs everyone an afternoon: a Nix flake only reads files git is
-tracking, so a new skill you have not staged is invisible to the build. `apply` stages them for
-you and says so.
+`doctor` compares what is deployed in your home against what this repository declares, so it
+tells you a harness is stale rather than that a file exists. It also checks the trap that costs
+everyone an afternoon: a Nix flake only reads files git is tracking, so a new skill you have not
+staged is invisible to the build. `apply` stages them for you and says so.
 
 ## Using the module directly
 
