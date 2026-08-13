@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake-check:
+    name: nix flake check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix flake check --print-build-logs
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix run nixpkgs#statix -- check . -i template
+      - run: nix run nixpkgs#deadnix -- --fail .
+      - run: nix run nixpkgs#ruff -- check .
+      - run: nix run nixpkgs#ruff -- format --check .
+      - run: nix run nixpkgs#shellcheck -- module/hooks/runtime/run-hook.sh
+
+  cli:
+    name: cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check cli/bin/tackroom.mjs
+      - run: for source in cli/src/*.mjs; do node --check "$source"; done
+      - run: node cli/bin/tackroom.mjs --help

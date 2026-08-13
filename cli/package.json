@@ -1,0 +1,34 @@
+{
+  "name": "tackroom",
+  "version": "0.1.0",
+  "description": "Declare your Claude Code, Codex and OpenCode setup once and apply it anywhere",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "opencode",
+    "agents",
+    "dotfiles",
+    "nix",
+    "home-manager"
+  ],
+  "homepage": "https://github.com/castrozan/tackroom",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/castrozan/tackroom.git",
+    "directory": "cli"
+  },
+  "license": "MIT",
+  "author": "Lucas Zanoni",
+  "type": "module",
+  "bin": {
+    "tackroom": "./bin/tackroom.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
