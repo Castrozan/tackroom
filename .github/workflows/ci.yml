@@ -31,11 +31,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix run nixpkgs#statix -- check . -i template
-      - run: nix run nixpkgs#deadnix -- --fail .
-      - run: nix run nixpkgs#ruff -- check .
-      - run: nix run nixpkgs#ruff -- format --check .
-      - run: nix run nixpkgs#shellcheck -- module/hooks/runtime/run-hook.sh
+      - run: nix run .#lint
       - run: nix fmt
       - run: git diff --exit-code
 

@@ -59,6 +59,39 @@
         }
       );
 
+      apps = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          lint = pkgs.writeShellApplication {
+            name = "tackroom-lint";
+            runtimeInputs = [
+              pkgs.statix
+              pkgs.deadnix
+              pkgs.ruff
+              pkgs.shellcheck
+              pkgs.findutils
+            ];
+            text = ''
+              status=0
+              statix check . -i template || status=1
+              deadnix --fail . || status=1
+              ruff check . || status=1
+              ruff format --check . || status=1
+              find . -name '*.sh' -not -path './.git/*' -print0 |
+                xargs -0 --no-run-if-empty shellcheck || status=1
+              exit "$status"
+            '';
+          };
+        in
+        {
+          lint = {
+            type = "app";
+            program = "${lint}/bin/tackroom-lint";
+          };
+        }
+      );
+
       devShells = forAllSystems (
         system:
         let

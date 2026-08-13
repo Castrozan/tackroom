@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse entry point. Every harness reaches the same guards through here."""
 
 import os
@@ -8,7 +7,11 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 import blocked_command_guard  # noqa: E402
 import protected_path_guard  # noqa: E402
-from hook_dispatch import emit_pre_tool_use_decision, read_hook_input, run_guards  # noqa: E402
+from hook_dispatch import (  # noqa: E402
+    emit_pre_tool_use_decision,
+    read_hook_input,
+    run_guards,
+)
 
 GUARDS = [
     blocked_command_guard.guard,
