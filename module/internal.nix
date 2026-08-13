@@ -8,11 +8,6 @@ let
   cfg = config.tackroom;
   tackroomLib = import ./lib { inherit lib; };
 
-  instructionsBody = tackroomLib.readInstructions cfg.instructions;
-
-  skillNames = tackroomLib.skillNamesIn cfg.skillsDirectory;
-  subagentFileNames = tackroomLib.markdownFileNamesIn cfg.subagentsDirectory;
-
   hooks = import ./hooks {
     inherit pkgs lib;
     guardrails = {
@@ -45,25 +40,6 @@ let
       '';
     };
 
-  instructionsFor =
-    harness:
-    let
-      suffix = cfg.harnesses.${harness}.instructionsSuffix;
-    in
-    if suffix == "" then instructionsBody else instructionsBody + "\n\n" + suffix;
-
-  skillFilesUnder =
-    deploymentPrefix:
-    builtins.listToAttrs (
-      map (skillName: {
-        name = "${deploymentPrefix}/${skillName}";
-        value = {
-          source = cfg.skillsDirectory + "/${skillName}";
-          recursive = true;
-        };
-      }) skillNames
-    );
-
   enabledHarnessNames = builtins.filter (harness: cfg.harnesses.${harness}.enable) [
     "claude"
     "codex"
@@ -75,12 +51,7 @@ in
     tackroom.internal = {
       inherit
         hooks
-        instructionsBody
-        instructionsFor
         mergeManagedConfig
-        skillFilesUnder
-        skillNames
-        subagentFileNames
         tackroomLib
         enabledHarnessNames
         ;
@@ -88,7 +59,7 @@ in
 
     assertions = [
       {
-        assertion = cfg.instructions != "" || skillNames != [ ];
+        assertion = cfg.instructions != "" || cfg.skillsDirectory != null;
         message = ''
           tackroom is enabled but declares neither instructions nor skills, so every harness
           would be configured with nothing to say. Set tackroom.instructions to your shared

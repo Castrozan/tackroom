@@ -73,16 +73,29 @@ harness is a build step with checks that fail when the three surfaces stop match
 | You declare          | Claude Code           | Codex                  | OpenCode                           |
 | -------------------- | --------------------- | ---------------------- | ---------------------------------- |
 | `instructions`       | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md`   | `~/.config/opencode/AGENTS.md`     |
-| `skillsDirectory`    | `~/.claude/skills/`   | `~/.codex/skills/`     | `~/.config/opencode/skills/`       |
-| `subagentsDirectory` | `~/.claude/agents/`   | not supported          | `~/.config/opencode/agent/`        |
+| `skillsDirectory`    | `~/.claude/skills/`   | `~/.agents/skills/`    | `~/.config/opencode/skills/`       |
+| `subagentsDirectory` | `~/.claude/agents/`   | `~/.codex/agents/`     | `~/.config/opencode/agents/`       |
 | `mcpServers`         | `~/.claude.json`      | `~/.codex/config.toml` | `~/.config/opencode/opencode.json` |
 | `guardrails`         | `settings.json` hooks | `config.toml` hooks    | `plugin/tackroom-guards.js`        |
 
 The instruction body arrives byte-identical on all three, and a flake check fails the build if
-it ever does not. Subagent frontmatter is rewritten into OpenCode's permission-map schema on the
-way, because OpenCode treats an agent file it cannot parse as a fatal config error rather than
-skipping it. Codex has no user-defined subagent file format, so nothing is written there instead
-of writing something that would never be read.
+it ever does not. Subagent frontmatter is rewritten per harness on the way, because OpenCode
+treats an agent file it cannot parse as a fatal config error rather than skipping it, and Codex
+wants TOML rather than markdown.
+
+## What does the translating
+
+tackroom does not write those files itself. It renders your declaration into the source format
+of [rulesync](https://github.com/dyoshikawa/rulesync) and runs it, so the per-harness knowledge
+lives in a project that tracks 30+ agents rather than in a module that would fall behind them.
+
+The engine runs inside the build, not on your machine, from a dependency tree pinned by hash.
+Generation is therefore offline, reproducible and rolled back with the rest of a home-manager
+generation, which is the part a `generate` command run by hand cannot give you.
+
+Guardrails are the exception and stay tackroom's own, because the engine's OpenCode hook output
+invokes the command without the tool input and ignores its answer, which is a notifier rather
+than a guard.
 
 ## Guardrails
 

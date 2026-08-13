@@ -64,6 +64,8 @@ def main():
     document_format = os.environ.get(FORMAT_VARIABLE, "json")
     if not managed_source or not live_target:
         sys.exit("merge_managed_config needs a managed source and a live target")
+    if not Path(managed_source).exists():
+        return
     declared = read_document(managed_source, document_format)
     live = read_document(live_target, document_format)
     write_document(live_target, merged(declared, live), document_format)

@@ -161,22 +161,32 @@ in
       };
     };
 
+    engine = {
+      version = mkOption {
+        type = types.str;
+        default = "16.12.0";
+        description = ''
+          Version of rulesync, the tool that translates the declaration above into each
+          harness's native files. Bumping this needs a matching registryHash.
+        '';
+      };
+
+      registryHash = mkOption {
+        type = types.str;
+        default = "sha256-jqrcv8Yp9E8Pt5zPKwOnusDwFzXzqmhWgwHYUrLQ6sE=";
+        description = ''
+          Hash of the engine's installed dependency tree. It pins what a build may fetch, so
+          the projection is reproducible rather than whatever the registry serves today. A
+          mismatch fails the build loudly and prints the hash to paste back here.
+        '';
+      };
+    };
+
     internal = mkOption {
       type = types.attrsOf types.anything;
       default = { };
       internal = true;
-      description = "Computed artifacts every harness projection reads.";
-    };
-
-    declared = mkOption {
-      type = types.attrsOf types.anything;
-      default = { };
-      internal = true;
-      description = ''
-        What each harness projection ended up declaring, exposed for the flake checks. Kept
-        separate from internal so a projection can publish here while reading there without
-        making the option set self-referential.
-      '';
+      description = "Computed artifacts the placement and guard modules read.";
     };
   };
 }

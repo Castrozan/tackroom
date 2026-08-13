@@ -67,19 +67,27 @@ Each harness reaches that runtime its own way:
 
 Adding a fourth harness means writing one adapter, not rewriting the guards.
 
-## Subagent translation
+This is the one layer tackroom does not delegate. The engine can register hooks, but its OpenCode
+output invokes the command with no tool input on stdin and discards whatever it answers, so a
+guard riding on it would inspect nothing and refuse nothing while Claude Code and Codex looked
+correctly wired. A guard that silently covers two harnesses out of three is worse than none.
 
-Claude's subagent frontmatter names allowed tools as a comma-separated string. OpenCode wants a
-map of tool name to boolean, and treats a file it cannot parse as a fatal error that takes down
-the whole config rather than skipping one agent. So the translation is not cosmetic: shipping
-Claude's frontmatter to OpenCode unchanged breaks OpenCode entirely.
+## Why the translation is borrowed
 
-The translation emits an explicit `false` for every tool the Claude file did not list, rather
-than omitting it. An omitted key means "inherit", which would silently widen the agent's reach
-beyond what was declared.
+Writing the per-harness translation ourselves was the original design and it was wrong. Three
+harnesses is the number today; each one moves independently, and the translation table is pure
+maintenance with no insight in it. rulesync already tracks 30+ agents, and during this rewrite it
+knew something our own code did not: Codex grew a subagent format, so the check asserting Codex
+gets no agent files was asserting a fact that had expired.
 
-Codex has no user-defined subagent file format. Nothing is written there, and a check asserts
-nothing ever is, because a directory of files no one reads looks like working configuration.
+So tackroom renders its declaration into rulesync's source format and runs it. The option surface
+stays ours, because that is the part a user reads and the part that should not track anyone
+else's vocabulary.
+
+The engine runs inside a derivation with `HOME` set to the output, from a dependency tree pinned
+by a fixed output hash. Generation is offline, reproducible, and part of the generation you can
+roll back. That is what Nix contributes here, and it is the only thing running the same tool by
+hand cannot give you.
 
 ## What the checks are for
 
@@ -91,9 +99,13 @@ implementation details:
 - a per-harness suffix reaches its own harness and no other
 - every declared skill lands in every harness's skill directory
 - declared guardrails reach the native hook surface of all three
-- subagents arrive in OpenCode's schema, and never arrive at Codex
+- subagents arrive on every harness, in OpenCode's own schema
 - enabling tackroom with nothing declared fails the build instead of deploying three empty
   harnesses
+
+Most of these now run against the built projection rather than against evaluated Nix, which is
+the point: they check what the engine actually produced, so an engine upgrade that changes a
+layout fails here rather than on someone's machine.
 
 A drift that these do not catch is a bug in the check set, not an acceptable outcome.
 
