@@ -14,19 +14,17 @@
   "homepage": "https://github.com/castrozan/tackroom",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/castrozan/tackroom.git",
-    "directory": "cli"
+    "url": "git+https://github.com/castrozan/tackroom.git"
   },
   "license": "MIT",
   "author": "Lucas Zanoni",
   "type": "module",
   "bin": {
-    "tackroom": "./bin/tackroom.mjs"
+    "tackroom": "./cli/bin/tackroom.mjs"
   },
   "files": [
-    "bin",
-    "src",
-    "README.md"
+    "cli/bin",
+    "cli/src"
   ],
   "engines": {
     "node": ">=18"

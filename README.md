@@ -10,6 +10,12 @@ subagents, MCP servers and guardrails, projected onto whichever of them you run.
 npx tackroom init ~/agents
 ```
 
+Or straight from this repository, which is also how you run an unreleased change:
+
+```bash
+npx github:castrozan/tackroom init ~/agents
+```
+
 That scaffolds a configuration repository, installs Nix if you do not have it, and applies the
 result. After that, you edit files and run `npx tackroom apply`. You never have to write Nix
 beyond filling in the options below, and you never have to touch `~/.claude`, `~/.codex` or
