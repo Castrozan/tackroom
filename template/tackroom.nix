@@ -9,6 +9,5 @@ _: {
     harnesses.claude.enable = true;
     harnesses.codex.enable = false;
     harnesses.opencode.enable = false;
-
   };
 }
