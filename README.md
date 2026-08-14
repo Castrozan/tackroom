@@ -1,24 +1,18 @@
 # tackroom
 
-Declare your Claude Code, Codex and OpenCode setup once. Apply it on any machine.
+Declare your Claude Code, Codex and OpenCode setup once. Apply it anywhere.
 
 A tackroom is the room in a stable where the harnesses are kept, repaired and fitted before
-use. This is that room for the agent CLIs you drive: one repository holding the rules, skills,
-subagents and MCP servers, projected onto whichever of them you run.
+use. This is that room for the agent CLIs you drive: one directory holding the rules, skills,
+subagents, hooks and MCP servers, projected onto whichever of them you run.
 
 ```bash
 npx tackroom init ~/agents
 ```
 
-Or straight from this repository, which is also how you run an unreleased change:
-
-```bash
-npx github:castrozan/tackroom init ~/agents
-```
-
-That scaffolds a configuration repository, installs Nix if you do not have it, and applies the
-result. After that, you edit files and run `npx tackroom apply`. You never have to write Nix
-beyond filling in the options below, and you never have to touch `~/.claude`, `~/.codex` or
+That scaffolds a configuration, applies it, and leaves you with an ordinary directory of
+markdown and scripts. After that you edit files and run `npx tackroom apply`. There is nothing
+to install beyond Node, which you already have, and you never touch `~/.claude`, `~/.codex` or
 `~/.config/opencode` by hand again.
 
 ## The problem it solves
@@ -26,126 +20,102 @@ beyond filling in the options below, and you never have to touch `~/.claude`, `~
 The three CLIs want the same things and store them in three different shapes. Your rules live
 in `CLAUDE.md` for one and `AGENTS.md` for the others. Skills sit under three separate
 directories. Subagent frontmatter that Claude accepts will fail OpenCode's config outright, and
-Codex wants TOML for the same thing.
+Codex wants TOML for the same thing. Hooks are a settings key on one, their own file on
+another, and a JavaScript plugin on the third.
 
 Keeping them in step by hand does not fail loudly. It fails by drifting, so a rule you thought
 applied everywhere quietly applies to one CLI, and you only notice when an agent does the thing
 you told it not to.
 
-tackroom removes the hand-copying. You write each thing once, and the projection onto each
-harness is a build step with checks that fail when the three surfaces stop matching.
-
 ## What you write
 
-```nix
+```jsonc
 {
-  tackroom = {
-    enable = true;
+  "harnesses": ["claude", "codex", "opencode"],
 
-    instructions = ./instructions/AGENTS.md;
-    skillsDirectory = ./skills;
-    subagentsDirectory = ./subagents;
+  "instructions": "instructions/AGENTS.md",
+  "skills": "skills",
+  "subagents": "subagents",
 
-    harnesses.claude.enable = true;
-    harnesses.codex.enable = true;
-    harnesses.opencode.enable = true;
+  "hooks": {
+    "preToolUse": [{ "matcher": "[Bb]ash", "command": "./hooks/refuse-force-push.mjs" }],
+  },
 
-    mcpServers.chrome-devtools = {
-      command = "npx";
-      args = [ "chrome-devtools-mcp@latest" ];
-    };
-  };
+  "mcpServers": {
+    "chrome-devtools": { "command": "npx", "args": ["chrome-devtools-mcp@latest"] },
+  },
 }
 ```
 
 ## Where each thing lands
 
-| You declare          | Claude Code           | Codex                  | OpenCode                           |
-| -------------------- | --------------------- | ---------------------- | ---------------------------------- |
-| `instructions`       | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md`   | `~/.config/opencode/AGENTS.md`     |
-| `skillsDirectory`    | `~/.claude/skills/`   | `~/.agents/skills/`    | `~/.config/opencode/skills/`       |
-| `subagentsDirectory` | `~/.claude/agents/`   | `~/.codex/agents/`     | `~/.config/opencode/agents/`       |
-| `mcpServers`         | `~/.claude.json`      | `~/.codex/config.toml` | `~/.config/opencode/opencode.json` |
+| You declare    | Claude Code               | Codex                  | OpenCode                           |
+| -------------- | ------------------------- | ---------------------- | ---------------------------------- |
+| `instructions` | `~/.claude/CLAUDE.md`     | `~/.codex/AGENTS.md`   | `~/.config/opencode/AGENTS.md`     |
+| `skills`       | `~/.claude/skills/`       | `~/.agents/skills/`    | `~/.config/opencode/skills/`       |
+| `subagents`    | `~/.claude/agents/`       | `~/.codex/agents/`     | `~/.config/opencode/agents/`       |
+| `hooks`        | `~/.claude/settings.json` | `~/.codex/hooks.json`  | `~/.config/opencode/plugins/`      |
+| `mcpServers`   | `~/.claude.json`          | `~/.codex/config.toml` | `~/.config/opencode/opencode.json` |
 
-The instruction body arrives byte-identical on all three, and a flake check fails the build if
-it ever does not. Subagent frontmatter is rewritten per harness on the way, because OpenCode
-treats an agent file it cannot parse as a fatal config error rather than skipping it, and Codex
-wants TOML rather than markdown.
+The instruction body arrives byte-identical on all three, and a test fails the build if it ever
+does not. Subagent frontmatter is rewritten per harness on the way, because OpenCode treats an
+agent file it cannot parse as a fatal config error rather than skipping it, and Codex wants TOML
+rather than markdown.
+
+## Hooks
+
+A hook is an ordinary executable. It runs on an agent lifecycle event, and refusing is how it
+earns its keep: exit non-zero and the action is blocked. A command starting with `./` is
+resolved against your configuration directory and marked executable on apply, so the script
+stays part of the repository rather than something you install separately.
+
+The three harnesses do not offer the same thing here, and tackroom does not pretend otherwise:
+
+**Claude Code** gets native hooks in `settings.json`. Your script receives the full event
+payload as JSON on stdin and can answer on stdout with a `permissionDecision` and a reason the
+model reads. This is the complete protocol.
+
+**Codex** gets native hooks in `.codex/hooks.json`, command type only.
+
+**OpenCode** gets a generated plugin. The plugin calls your command but passes no payload on
+stdin and discards its stdout, so the script can refuse by exiting non-zero but cannot see what
+it is refusing. Write hooks that degrade to a no-op when they get no payload, the way the
+scaffolded sample does, rather than ones that block blindly.
+
+A `matcher` is a regex tested against each harness's own tool name, and those names differ in
+case between harnesses, so `[Bb]ash` rather than `Bash`. This is one of the few things in a
+tackroom configuration that is not fully portable.
+
+If what you want is a maintained pattern set rather than your own scripts,
+[cc-safety-net](https://github.com/kenryu42/cc-safety-net) does that across twelve agents.
+
+## Commands
+
+```
+npx tackroom init [dir]     Scaffold a configuration and apply it
+npx tackroom apply [dir]    Project the configuration onto every declared harness
+npx tackroom doctor [dir]   Report what is declared, what is deployed, what is stale
+```
+
+`doctor` asks the engine itself whether the deployed files still match your declaration, so it
+names the files an apply would rewrite rather than guessing from paths it has memorised.
 
 ## What does the translating
 
 tackroom does not write those files itself. It renders your declaration into the source format
 of [rulesync](https://github.com/dyoshikawa/rulesync) and runs it, so the per-harness knowledge
 lives in a project that tracks 30+ agents rather than in a module that would fall behind them.
+The version is pinned in `package-lock.json`, so an apply produces the same output until you
+choose to update.
 
-The engine runs inside the build, not on your machine, from a dependency tree pinned by hash.
-Generation is therefore offline, reproducible and rolled back with the rest of a home-manager
-generation, which is the part a `generate` command run by hand cannot give you.
+Your live config files are not clobbered. The engine merges what you declared into what is
+already there, so keys a harness writes for itself survive an apply.
 
-Enforcement is deliberately not here. A hook that refuses dangerous commands is an ordinary
-executable and needs nothing from Nix, so [cc-safety-net](https://github.com/kenryu42/cc-safety-net)
-does that job across twelve agents and does it better than a second implementation would.
+## Carrying it to another machine
 
-## Bring your own binaries
-
-Every harness has a `package` option defaulting to the nixpkgs build. Set it to `null` when you
-install the CLI yourself through npm, curl or a system package manager, and tackroom will manage
-only its configuration:
-
-```nix
-tackroom.harnesses.claude.package = null;
-```
-
-## Escape hatch
-
-Anything tackroom does not model yet is still reachable. `harnesses.<name>.settings` is merged
-over everything generated, in that harness's own native shape:
-
-```nix
-tackroom.harnesses.opencode.settings = {
-  small_model = "anthropic/claude-haiku-4-5";
-  autoupdate = false;
-};
-```
-
-Your live config files stay writable. tackroom merges what you declared over what is already
-there on every apply, so keys the harness itself writes are preserved rather than clobbered by a
-read-only symlink.
-
-## Commands
-
-```
-npx tackroom init [dir]     Scaffold a configuration and apply it
-npx tackroom apply [dir]    Build and activate
-npx tackroom update [dir]   Update pinned inputs, then apply
-npx tackroom doctor [dir]   Report what is wired, missing or stale
-```
-
-`doctor` compares what is deployed in your home against what this repository declares, so it
-tells you a harness is stale rather than that a file exists. It also checks the trap that costs
-everyone an afternoon: a Nix flake only reads files git is tracking, so a new skill you have not
-staged is invisible to the build. `apply` stages them for you and says so.
-
-## Using the module directly
-
-The CLI is a convenience, not a dependency. If you already run home-manager, import the module:
-
-```nix
-{
-  inputs.tackroom.url = "github:castrozan/tackroom";
-  inputs.tackroom.inputs.nixpkgs.follows = "nixpkgs";
-}
-```
-
-```nix
-{
-  imports = [ inputs.tackroom.homeManagerModules.default ];
-  tackroom.enable = true;
-}
-```
-
-The input set is nixpkgs-only, so following your own nixpkgs keeps your lock free of
-tackroom-specific entries.
+The configuration is an ordinary directory. Put it under git, push it, clone it elsewhere, and
+run `npx tackroom apply`. Nothing in it records which machine wrote it, so there is no
+per-machine file to reconcile. Rolling back is `git checkout` followed by another apply.
 
 ## What this is not
 
@@ -155,8 +125,8 @@ It configures the CLIs and gets out of the way.
 
 ## Design
 
-[ARCHITECTURE.md](ARCHITECTURE.md) covers the layering, the harness translation rules, and the
-decisions worth arguing with.
+[ARCHITECTURE.md](ARCHITECTURE.md) covers the layering, what is borrowed, and the decisions
+worth arguing with.
 
 ## Licence
 

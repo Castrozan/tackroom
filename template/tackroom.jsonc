@@ -1,0 +1,28 @@
+{
+  // Which agent CLIs this configuration reaches. Drop the ones you do not run.
+  "harnesses": ["claude", "codex", "opencode"],
+
+  // The rules every agent loads, projected byte-identical onto all three.
+  "instructions": "instructions/AGENTS.md",
+
+  // Extra rules for one harness only, for genuine capability differences.
+  "instructionsSuffix": {},
+
+  "skills": "skills",
+  "subagents": "subagents",
+
+  // Hooks fire on agent lifecycle events. A relative command is resolved
+  // against this directory, so the script stays part of the configuration.
+  // A matcher is a regex tested against each harness's own tool name, and
+  // those names differ in case, so match both rather than picking one.
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "[Bb]ash",
+        "command": "./hooks/refuse-force-push.mjs",
+      },
+    ],
+  },
+
+  "mcpServers": {},
+}

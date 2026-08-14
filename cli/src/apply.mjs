@@ -1,59 +1,49 @@
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { nix, requireNix, run } from "./nix.mjs";
-import { UserFacingError, note, ok, step } from "./ui.mjs";
+import { chmod, mkdtemp, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadConfiguration } from "./config.mjs";
+import { engineVersion, generate } from "./engine.mjs";
+import { renderSource } from "./source.mjs";
+import { note, ok, step } from "./ui.mjs";
 
-export function requireConfigurationDirectory(directory) {
-  const configurationDirectory = resolve(directory ?? process.cwd());
-  if (!existsSync(join(configurationDirectory, "flake.nix"))) {
-    throw new UserFacingError(
-      `${configurationDirectory} is not a tackroom configuration. Run \`npx tackroom init\` there first.`,
-    );
+async function makeHooksExecutable(configuration) {
+  const commands = Object.values(configuration.hooks)
+    .flat()
+    .map((definition) => definition?.command?.split(" ")[0])
+    .filter((executable) => typeof executable === "string" && executable.startsWith(configuration.root));
+
+  for (const executable of new Set(commands)) {
+    const information = await stat(executable).catch(() => null);
+    if (information === null || !information.isFile()) continue;
+    await chmod(executable, information.mode | 0o111);
   }
-  return configurationDirectory;
+  return new Set(commands).size;
 }
 
-export async function untrackedFiles(directory) {
-  const status = await run("git", ["status", "--porcelain", "--untracked-files=all"], {
-    cwd: directory,
-    capture: true,
-  });
-  if (status.code !== 0) return [];
-  return status.stdout
-    .split("\n")
-    .filter((line) => line.startsWith("??"))
-    .map((line) => line.slice(3).trim());
+export async function withRenderedSource(configuration, body) {
+  const workspace = await mkdtemp(join(tmpdir(), "tackroom-"));
+  try {
+    await renderSource(configuration, workspace);
+    return await body(workspace);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
 }
 
-export async function applyConfiguration({ directory, assumeYes }) {
-  const configurationDirectory = requireConfigurationDirectory(directory);
-  const nixPath = await requireNix({ assumeYes });
+export async function applyConfiguration({ directory }) {
+  const configuration = await loadConfiguration(directory);
 
-  const untracked = await untrackedFiles(configurationDirectory);
-  if (untracked.length > 0) {
-    step("Staging files git was not tracking yet");
-    note("A flake reads the git index, so an untracked file is invisible to the build.");
-    for (const file of untracked) note(file);
-    await run("git", ["add", "."], { cwd: configurationDirectory, capture: true });
+  const executableCount = await makeHooksExecutable(configuration);
+  if (executableCount > 0) {
+    step("Marking hook scripts executable");
+    ok(`${executableCount} hook ${executableCount === 1 ? "script" : "scripts"} can run`);
   }
 
-  step("Building and activating your configuration");
-  const applied = await nix(nixPath, ["run", ".#apply"], { cwd: configurationDirectory });
-  if (applied.code !== 0) {
-    throw new UserFacingError("Activation failed. The Nix output above names the option or file at fault.");
-  }
-  ok("Every enabled harness now matches this repository");
-}
+  step(`Projecting onto ${configuration.harnesses.join(", ")}`);
+  note(`rulesync ${engineVersion()} does the per-harness translation`);
 
-export async function updateConfiguration({ directory, assumeYes }) {
-  const configurationDirectory = requireConfigurationDirectory(directory);
-  const nixPath = await requireNix({ assumeYes });
+  await withRenderedSource(configuration, (workspace) => generate({ sourceRoot: workspace }));
 
-  step("Updating pinned inputs");
-  const updated = await nix(nixPath, ["flake", "update"], { cwd: configurationDirectory });
-  if (updated.code !== 0) {
-    throw new UserFacingError("Could not update the flake inputs. The Nix output above says why.");
-  }
-  await applyConfiguration({ directory: configurationDirectory, assumeYes });
-  note("Commit the updated flake.lock to pin these versions for your other machines.");
+  ok("Every declared harness now matches this configuration");
+  note("Restart a running agent session for it to reload the new files.");
 }

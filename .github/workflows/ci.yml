@@ -4,45 +4,57 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: CI-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  flake-check:
-    name: nix flake check
-    runs-on: ${{ matrix.os }}
+  test:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        node: ["20", "22"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix flake check --print-build-logs
-
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix run .#lint
-      - run: nix fmt
-      - run: git diff --exit-code
-
-  cli:
-    name: cli
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
-      - run: node --check cli/bin/tackroom.mjs
-      - run: for source in cli/src/*.mjs; do node --check "$source"; done
-      - run: node cli/bin/tackroom.mjs --help
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+
+  end-to-end:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Scaffold and apply into a sandboxed home
+        run: |
+          export HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME"
+          node cli/bin/tackroom.mjs init "$RUNNER_TEMP/agents" --yes
+          node cli/bin/tackroom.mjs doctor "$RUNNER_TEMP/agents"
+          test -f "$HOME/.claude/CLAUDE.md"
+          test -f "$HOME/.codex/AGENTS.md"
+          test -f "$HOME/.config/opencode/AGENTS.md"
+          test -f "$HOME/.claude/settings.json"
+          test -f "$HOME/.codex/hooks.json"
+          test -f "$HOME/.config/opencode/plugins/rulesync-hooks.js"

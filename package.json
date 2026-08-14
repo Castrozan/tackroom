@@ -1,15 +1,14 @@
 {
   "name": "tackroom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Declare your Claude Code, Codex and OpenCode setup once and apply it anywhere",
   "keywords": [
     "claude-code",
     "codex",
     "opencode",
     "agents",
-    "dotfiles",
-    "nix",
-    "home-manager"
+    "hooks",
+    "dotfiles"
   ],
   "homepage": "https://github.com/castrozan/tackroom",
   "repository": {
@@ -24,9 +23,21 @@
   },
   "files": [
     "cli/bin",
-    "cli/src"
+    "cli/src",
+    "template"
   ],
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "rulesync": "16.12.0"
+  },
+  "devDependencies": {
+    "prettier": "3.4.2"
+  },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

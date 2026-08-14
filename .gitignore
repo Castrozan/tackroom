@@ -1,6 +1,1 @@
-result
-result-*
-.direnv
 node_modules
-__pycache__/
-.pytest_cache/
