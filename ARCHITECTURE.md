@@ -1,5 +1,7 @@
 # Architecture
 
+[Português](ARCHITECTURE.pt-BR.md)
+
 ## The shape of the problem
 
 Three agent CLIs, one operator, one set of intentions. Claude Code, Codex and OpenCode each

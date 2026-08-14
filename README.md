@@ -1,5 +1,7 @@
 # tackroom
 
+[Português](README.pt-BR.md)
+
 Declare your Claude Code, Codex and OpenCode setup once. Apply it anywhere.
 
 A tackroom is the room in a stable where the harnesses are kept, repaired and fitted before
@@ -99,6 +101,69 @@ npx tackroom doctor [dir]   Report what is declared, what is deployed, what is s
 
 `doctor` asks the engine itself whether the deployed files still match your declaration, so it
 names the files an apply would rewrite rather than guessing from paths it has memorised.
+
+## Guide
+
+**Start.** `npx tackroom init ~/agents` writes the scaffold and applies it. You now have a
+directory with `tackroom.jsonc`, an `instructions/AGENTS.md`, one skill, one subagent and one
+hook, and three configured CLIs.
+
+**Change a rule.** Edit `instructions/AGENTS.md` and run `npx tackroom apply ~/agents`. All
+three harnesses get the new body, byte for byte. Restart any running agent session so it
+reloads.
+
+**Add a skill.** Create `skills/<name>/SKILL.md`. Nothing else. It lands in all three skill
+directories on the next apply.
+
+**Add a subagent.** Drop a Claude-flavoured markdown file in `subagents/`. It is rewritten into
+OpenCode's frontmatter schema and Codex's TOML on the way out.
+
+**Add a hook.** Write the script under `hooks/`, then name it in `tackroom.jsonc`:
+
+```jsonc
+"hooks": {
+  "preToolUse": [{ "matcher": "[Bb]ash", "command": "./hooks/my-guard.mjs" }]
+}
+```
+
+Apply marks it executable and rewrites the command to an absolute path. Test the script by
+hand before trusting it, because a hook that always exits non-zero blocks every matching call:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"rm -rf /"}}' | ./hooks/my-guard.mjs; echo $?
+```
+
+**Run one harness only.** Drop names from `harnesses`. A harness you remove stops receiving
+files, and `doctor` says so rather than leaving you guessing.
+
+**Check the state.** `npx tackroom doctor ~/agents` reports what is declared, what is deployed
+and what an apply would rewrite. It exits non-zero when something is stale, so it works in a
+shell prompt or a cron line.
+
+**Move it.** `git init`, commit, push, clone elsewhere, `npx tackroom apply`. Roll back with
+`git checkout <sha>` and another apply.
+
+## Why not just run rulesync?
+
+You can, and if you are happy writing `.rulesync/` by hand you should. tackroom is a wrapper
+over it, and it is worth naming exactly what the wrapper buys.
+
+The substantive one is hook paths. rulesync's hook commands are strings passed through to each
+harness, so a repo-local script declared as `./hooks/guard.mjs` in global mode arrives as
+`"$CLAUDE_PROJECT_DIR"/hooks/guard.mjs` on Claude Code and as a bare `./hooks/guard.mjs` on
+Codex and OpenCode. All three then resolve against whatever project the agent happens to be
+sitting in, so the hook points at a file that is not there and silently never fires. tackroom
+resolves the command against your configuration directory and marks it executable, so a global
+hook actually runs.
+
+The rest is ergonomics. One `instructions/AGENTS.md` and an `instructionsSuffix` map instead of
+one rule file per harness with its own frontmatter and `targets` list. A validator that reports
+every problem in your config at once, in your vocabulary, and refuses the configurations that
+would deploy nothing. One vocabulary to learn rather than the `.rulesync/` layout, its
+frontmatter, its features list and its target names.
+
+What tackroom does not add is any translation of its own. Every harness-specific decision is
+rulesync's, which is the point.
 
 ## What does the translating
 
