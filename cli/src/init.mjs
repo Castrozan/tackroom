@@ -63,7 +63,7 @@ export async function initialiseConfiguration({ directory, assumeYes, template }
   ok("git is tracking the configuration, so the flake can see every file");
 
   note("");
-  note(`Edit ${join(targetDirectory, "tackroom.nix")} to choose harnesses and guardrails.`);
+  note(`Edit ${join(targetDirectory, "tackroom.nix")} to choose harnesses and what they load.`);
   note(`Edit ${join(targetDirectory, "instructions", "AGENTS.md")} for the rules every agent loads.`);
   note("");
 

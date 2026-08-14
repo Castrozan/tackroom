@@ -16,8 +16,6 @@ forAllSystems (
     inherit (evaluation)
       evaluateTackroom
       projectionOf
-      deployedFileNames
-      activationStepNames
       unmetAssertions
       ;
 
@@ -27,13 +25,6 @@ forAllSystems (
         instructions = ../template/instructions/AGENTS.md;
         skillsDirectory = ../template/skills;
         subagentsDirectory = ../template/subagents;
-        guardrails.blockedCommands = [
-          {
-            pattern = "\\bgit\\s+add\\s+-A\\b";
-            reason = "Stage specific files.";
-          }
-        ];
-        guardrails.protectedPaths = [ "~/.ssh" ];
         harnesses = {
           claude.enable = true;
           codex.enable = true;
@@ -57,8 +48,6 @@ forAllSystems (
       tackroom.enable = true;
       tackroom.harnesses.claude.enable = true;
     };
-
-    deployedNames = deployedFileNames evaluated;
 
     instructionPaths = [
       ".claude/CLAUDE.md"
@@ -124,19 +113,6 @@ forAllSystems (
       grep -q "mode: subagent" "${projection}/.config/opencode/agents/reviewer.md" ||
         fail "OpenCode subagents must carry its own schema, since it treats an unparseable agent file as fatal"
     '';
-
-    guardrails-are-wired-on-every-harness =
-      mkEvalCheck "guardrails-are-wired-on-every-harness"
-        (
-          builtins.elem "tackroomClaudeGuards" (activationStepNames evaluated)
-          && builtins.elem "tackroomCodexGuards" (activationStepNames evaluated)
-          && builtins.elem ".config/opencode/plugin/tackroom-guards.js" deployedNames
-        )
-        ''
-          declared guardrails must reach every enabled harness through tackroom's own bridge. The
-          engine's OpenCode hook output calls the command with no stdin and ignores its answer, so
-          delegating this would leave OpenCode unguarded while the other two looked fine.
-        '';
 
     an-empty-configuration-refuses-to-build =
       mkEvalCheck "an-empty-configuration-refuses-to-build" (unmetAssertions nothingDeclared != [ ])

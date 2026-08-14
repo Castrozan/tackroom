@@ -4,7 +4,7 @@ Declare your Claude Code, Codex and OpenCode setup once. Apply it on any machine
 
 A tackroom is the room in a stable where the harnesses are kept, repaired and fitted before
 use. This is that room for the agent CLIs you drive: one repository holding the rules, skills,
-subagents, MCP servers and guardrails, projected onto whichever of them you run.
+subagents and MCP servers, projected onto whichever of them you run.
 
 ```bash
 npx tackroom init ~/agents
@@ -25,9 +25,8 @@ beyond filling in the options below, and you never have to touch `~/.claude`, `~
 
 The three CLIs want the same things and store them in three different shapes. Your rules live
 in `CLAUDE.md` for one and `AGENTS.md` for the others. Skills sit under three separate
-directories. Hooks use three unrelated protocols: a JSON block in `settings.json`, a TOML table
-in `config.toml`, and a JavaScript plugin. Subagent frontmatter that Claude accepts will fail
-OpenCode's config outright.
+directories. Subagent frontmatter that Claude accepts will fail OpenCode's config outright, and
+Codex wants TOML for the same thing.
 
 Keeping them in step by hand does not fail loudly. It fails by drifting, so a rule you thought
 applied everywhere quietly applies to one CLI, and you only notice when an agent does the thing
@@ -51,15 +50,6 @@ harness is a build step with checks that fail when the three surfaces stop match
     harnesses.codex.enable = true;
     harnesses.opencode.enable = true;
 
-    guardrails.blockedCommands = [
-      {
-        pattern = "\\bgit\\s+add\\s+-A\\b";
-        reason = "Stage the files you changed by name.";
-      }
-    ];
-
-    guardrails.protectedPaths = [ "~/.ssh" "~/.gnupg" ];
-
     mcpServers.chrome-devtools = {
       command = "npx";
       args = [ "chrome-devtools-mcp@latest" ];
@@ -76,7 +66,6 @@ harness is a build step with checks that fail when the three surfaces stop match
 | `skillsDirectory`    | `~/.claude/skills/`   | `~/.agents/skills/`    | `~/.config/opencode/skills/`       |
 | `subagentsDirectory` | `~/.claude/agents/`   | `~/.codex/agents/`     | `~/.config/opencode/agents/`       |
 | `mcpServers`         | `~/.claude.json`      | `~/.codex/config.toml` | `~/.config/opencode/opencode.json` |
-| `guardrails`         | `settings.json` hooks | `config.toml` hooks    | `plugin/tackroom-guards.js`        |
 
 The instruction body arrives byte-identical on all three, and a flake check fails the build if
 it ever does not. Subagent frontmatter is rewritten per harness on the way, because OpenCode
@@ -93,19 +82,9 @@ The engine runs inside the build, not on your machine, from a dependency tree pi
 Generation is therefore offline, reproducible and rolled back with the rest of a home-manager
 generation, which is the part a `generate` command run by hand cannot give you.
 
-Guardrails are the exception and stay tackroom's own, because the engine's OpenCode hook output
-invokes the command without the tool input and ignores its answer, which is a notifier rather
-than a guard.
-
-## Guardrails
-
-A guardrail is a rule the agent cannot talk its way past, enforced by a hook on every enabled
-harness. `blockedCommands` refuses a shell command and hands the model your reason, so it can
-correct course rather than just failing. `protectedPaths` refuses writes anywhere under a path,
-whichever field name the harness used to name the file.
-
-The point of putting them here rather than in your prompt is that a prompt is advice and a hook
-is not.
+Enforcement is deliberately not here. A hook that refuses dangerous commands is an ordinary
+executable and needs nothing from Nix, so [cc-safety-net](https://github.com/kenryu42/cc-safety-net)
+does that job across twelve agents and does it better than a second implementation would.
 
 ## Bring your own binaries
 

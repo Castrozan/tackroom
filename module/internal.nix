@@ -8,16 +8,6 @@ let
   cfg = config.tackroom;
   tackroomLib = import ./lib { inherit lib; };
 
-  hooks = import ./hooks {
-    inherit pkgs lib;
-    guardrails = {
-      blockedCommands = map (rule: {
-        inherit (rule) pattern reason;
-      }) cfg.guardrails.blockedCommands;
-      protectedPaths = map (tackroomLib.expandHome config.home.homeDirectory) cfg.guardrails.protectedPaths;
-    };
-  };
-
   configMergerPython = pkgs.python312.withPackages (pythonPackages: [ pythonPackages.tomli-w ]);
 
   mergeManagedConfig =
@@ -50,7 +40,6 @@ in
   config = lib.mkIf cfg.enable {
     tackroom.internal = {
       inherit
-        hooks
         mergeManagedConfig
         tackroomLib
         enabledHarnessNames

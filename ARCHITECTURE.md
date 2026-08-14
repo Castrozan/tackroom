@@ -3,7 +3,7 @@
 ## The shape of the problem
 
 Three agent CLIs, one operator, one set of intentions. Claude Code, Codex and OpenCode each
-read instructions, skills, subagents, MCP servers and hooks, and each stores them differently
+read instructions, skills, subagents and MCP servers, and each stores them differently
 enough that no file can be shared. There is no common format to standardise on and no prospect
 of one, because the differences are real capability differences rather than arbitrary choices.
 
@@ -26,7 +26,7 @@ of anyone running these CLIs, and `npx` needs no install step of its own. The CL
 load-bearing: everything it does is a documented command a user can run by hand.
 
 **Declaration.** A home-manager module whose option surface is written in the user's vocabulary
-rather than the harnesses'. `instructions`, `skillsDirectory`, `guardrails.blockedCommands`.
+rather than the harnesses'. `instructions`, `skillsDirectory`, `subagentsDirectory`.
 No option requires knowing which file a harness reads or what format it wants.
 
 **Escape.** `harnesses.<name>.settings` passes native configuration straight through, merged
@@ -43,34 +43,6 @@ Instead each apply merges the declared document over the live one, key by key, a
 back in place. Declared keys win, harness-written keys survive, and a corrupt live file is
 replaced rather than inherited. Instructions, skills and subagents are not written back to by
 anyone, so those stay ordinary symlinks and keep the rollback story intact.
-
-## Hook translation
-
-One guard, written once against one vocabulary, reaches all three protocols.
-
-The shared runtime normalises what the harnesses disagree about. `Bash`, `bash`, `shell`,
-`local_shell` and `terminal` all arrive as one tool name. `Write`, `Edit`, `write_file` and
-`apply_patch` arrive as another. A command may come as a string or a list, in a field called
-`command`, `cmd` or `script`. A file path may be `file_path`, `filePath` or `path`. A guard sees
-none of this.
-
-Each harness reaches that runtime its own way:
-
-- Claude Code registers a command hook in `settings.json` and reads a `permissionDecision` from
-  the hook's stdout.
-- Codex registers the same shape in `config.toml` under a `hooks` table and accepts the same
-  decision payload.
-- OpenCode has no command-hook mechanism at all. It gets a small JavaScript plugin that shells
-  out to the same dispatcher and turns a denial into a thrown error, because a throw is the only
-  refusal channel `tool.execute.before` offers. The message reaches the model as the tool result,
-  which is what makes the guard corrective rather than merely fatal.
-
-Adding a fourth harness means writing one adapter, not rewriting the guards.
-
-This is the one layer tackroom does not delegate. The engine can register hooks, but its OpenCode
-output invokes the command with no tool input on stdin and discards whatever it answers, so a
-guard riding on it would inspect nothing and refuse nothing while Claude Code and Codex looked
-correctly wired. A guard that silently covers two harnesses out of three is worse than none.
 
 ## Why the translation is borrowed
 
@@ -98,7 +70,6 @@ implementation details:
 - the instruction body arrives byte-identical on every enabled harness
 - a per-harness suffix reaches its own harness and no other
 - every declared skill lands in every harness's skill directory
-- declared guardrails reach the native hook surface of all three
 - subagents arrive on every harness, in OpenCode's own schema
 - enabling tackroom with nothing declared fails the build instead of deploying three empty
   harnesses
@@ -126,9 +97,9 @@ version together, so `init` can never produce a configuration the module cannot 
 function of the declaration, so a key you delete from your config stays in the live file until
 you delete it there. The alternative breaks all three harnesses, which is worse.
 
-**Guardrails are the modelled surface, not general hooks.** A general hook API would be more
-powerful and much harder to keep working across three protocols. Guardrails cover the case that
-actually recurs, and the escape hatch covers the rest.
+**Enforcement lives elsewhere.** A guard that refuses a dangerous command is an ordinary
+executable reading JSON on stdin. Nothing about it wants a build system, and cc-safety-net already
+ships one across twelve agents, so this module would only be a second, worse copy.
 
 ## Deliberately out of scope
 
@@ -139,5 +110,5 @@ product's worth of surface behind them.
 ## Where it goes next
 
 Per-project overlays, so a repository can add rules on top of the machine set. More harnesses,
-each one adapter. A `tackroom diff` that shows what an apply would change before it changes it.
+each one a target in the engine. A `tackroom diff` that shows what an apply would change before it changes it.
 Sharing a skills directory between machines through a second flake input.

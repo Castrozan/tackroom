@@ -2,21 +2,6 @@
 let
   inherit (lib) mkOption mkEnableOption types;
 
-  blockedCommandType = types.submodule {
-    options = {
-      pattern = mkOption {
-        type = types.str;
-        description = "Python regular expression searched against the command line an agent is about to run.";
-        example = "\\bgit\\s+add\\s+(-A|--all|\\.)(\\s|$)";
-      };
-      reason = mkOption {
-        type = types.str;
-        description = "Sentence shown to the agent instead of the command output. Say what to do instead, not only what is forbidden.";
-        example = "Stage specific files; git add -A sweeps in unrelated parallel work.";
-      };
-    };
-  };
-
   mcpServerType = types.submodule {
     options = {
       command = mkOption {
@@ -109,8 +94,8 @@ in
       default = null;
       description = ''
         Directory of subagent definitions as Claude-flavoured markdown with frontmatter.
-        Deployed to Claude Code as authored and translated into OpenCode's own frontmatter
-        schema. Codex has no user-defined subagent file format, so it is skipped there.
+        Deployed to Claude Code as authored, translated into OpenCode's own frontmatter
+        schema, and into Codex's TOML agent format.
       '';
       example = lib.literalExpression "./subagents";
     };
@@ -119,31 +104,6 @@ in
       type = types.attrsOf mcpServerType;
       default = { };
       description = "MCP servers declared once and registered with every enabled harness.";
-    };
-
-    guardrails = {
-      blockedCommands = mkOption {
-        type = types.listOf blockedCommandType;
-        default = [ ];
-        description = ''
-          Commands no agent may run on this machine, enforced by a pre-tool-use hook on every
-          enabled harness. The agent receives the reason and can adjust, so this shapes
-          behaviour rather than just failing.
-        '';
-      };
-
-      protectedPaths = mkOption {
-        type = types.listOf types.str;
-        default = [ ];
-        description = ''
-          Paths no agent may write to, matched as prefixes against the resolved target of a
-          write or edit. Enforced on every enabled harness.
-        '';
-        example = [
-          "~/.ssh"
-          "~/.gnupg"
-        ];
-      };
     };
 
     harnesses = {
@@ -186,7 +146,7 @@ in
       type = types.attrsOf types.anything;
       default = { };
       internal = true;
-      description = "Computed artifacts the placement and guard modules read.";
+      description = "Computed artifacts the placement module reads.";
     };
   };
 }
